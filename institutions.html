@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charity Connect - Institutions</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4; /* Light gray background */
+        }
+
+        header {
+            background-color: #7d3c98; /* A shade of purple */
+            color: white;
+            padding: 0.5em 0;
+            text-align: center;
+            width: auto;
+            margin: 0;
+        }
+
+        nav {
+            background-color: #9b59b6; /* Another shade of purple */
+            padding: 0.3em 0;
+            text-align: center;
+            width: auto;
+            margin: 0;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 1em;
+            font-weight: bold;
+        }
+
+        .container {
+            width: 80%;
+            margin: 2em auto;
+            background-color: white;
+            padding: 2em;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            color: #7d3c98; /* Purple headings */
+        }
+
+        footer {
+            text-align: center;
+            padding: 1em 0;
+            margin-top: 2em;
+            color: #7d3c98; /* Purple footer text */
+        }
+
+        .button {
+            display: inline-block;
+            background-color: #ffc300; /* A shade of gold/yellow */
+            color: #333; /* Dark text for contrast */
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        /* Form Styling */
+        #institution-registration form {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two columns for form fields */
+            gap: 15px; /* Space between grid items */
+        }
+
+        #institution-registration form p {
+            margin-bottom: 10px;
+        }
+
+        #institution-registration form input[type="text"],
+        #institution-registration form input[type="email"],
+        #institution-registration form input[type="tel"],
+        #institution-registration form input[type="url"],
+        #institution-registration form select {
+            width: 100%; /* Make input fields fill their container */
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding and border in element's total width and height */
+        }
+
+        #institution-registration form button {
+            /* Apply the button class styles */
+            background-color: #ffc300; /* A shade of gold/yellow */
+            color: #333; /* Dark text for contrast */
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none; /* Remove default button border */
+            cursor: pointer; /* Indicate it's clickable */
+            grid-column: span 2; /* Make the button span across both columns */
+        }
+
+        #institution-registration form button:hover {
+            background-color: #ffda66; /* Lighter shade on hover */
+        }
+
+        /* Style for checkboxes */
+        #institution-registration form input[type="checkbox"] {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Charity Connect</h1>
+        <p>Connecting donors with charitable institutions</p>
+    </header>
+
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="institutions.html">Institutions</a>
+        <a href="about.html">About</a>
+    </nav>
+
+    <div class="container">
+        <h2>Registered Institutions</h2>
+        <!-- This section will list the registered institutions -->
+        <div id="institutions-list">
+            <p>Loading institutions...</p>
+            <!-- Institution profiles will be loaded here -->
+        </div>
+
+        <hr>
+
+        <h2>Register Your Institution</h2>
+        <!-- This section will contain the registration form -->
+        <div id="institution-registration">
+            <form>
+                <p>Institution Name: <input type="text" name="name" required></p>
+                <p>Website (Optional): <input type="url" name="website"></p>
+                <p>Email: <input type="email" name="email" required></p>
+                <p>Phone: <input type="tel" name="phone" required></p>
+                <p>Institution Type:
+                    <select name="type" required>
+                        <option value="">Select Type</option>
+                        <option value="learning">Learning Institution/School</option>
+                        <option value="childrens_home">Children's Home</option>
+                        <option value="safehub">Safehub for Domestic Violence</option>
+                        <option value="other">Other</option>
+                    </select>
+ <p>Location: <input type="text" name="location" required></p>
+                </p>
+                <p>Items Needed (Select all that apply):</p>
+                <p>
+                    <input type="checkbox" name="needed_items" value="cash"> Cash<br>
+                    <input type="checkbox" name="needed_items" value="computers_laptops"> Computers and Laptops<br>
+                    <input type="checkbox" name="needed_items" value="electronics"> Electronics (TVs, etc.)<br>
+                    <input type="checkbox" name="needed_items" value="furniture"> Furniture (Beds, Chairs, etc.)<br>
+                    <input type="checkbox" name="needed_items" value="clothing"> Clothing<br>
+                    <input type="checkbox" name="needed_items" value="food_stuff"> Food Stuff (Rice, Beans, etc.)<br>
+                    <input type="checkbox" name="needed_items" value="infrastructure"> Infrastructure (Building Materials)<br>
+                    <input type="checkbox" name="needed_items" value="service"> Service (Arrange Visitation, Counseling, etc.)<br>
+                    <input type="checkbox" name="needed_items" value="sporting_equipment"> Sporting Equipments<br>
+                    <input type="checkbox" name="needed_items" value="other"> Other<br>
+                </p>
+                <p><button type="submit" class="button">Register</button></p>
+            </form>
+ <div id="other-item-specification" style="display: none; grid-column: span 2;">
+ <p>Please specify other item(s): <input type="text" name="other_item_spec"></p>
+ </div>
+
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2023 Charity Connect
+    </footer>
+
+    <script>
+        const otherCheckbox = document.querySelector('input[value="other"][name="needed_items"]');
+        const otherItemSpecification = document.getElementById('other-item-specification');
+
+        otherCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                otherItemSpecification.style.display = 'block';
+            } else {
+                otherItemSpecification.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

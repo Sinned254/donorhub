@@ -1,0 +1,9 @@
+charity-connect/
+├── static/
+│   ├── css/
+│   └── js/
+├── templates/
+├── venv/
+├── app.py
+├── requirements.txt
+└── README.md

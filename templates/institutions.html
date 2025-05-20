@@ -109,6 +109,43 @@
         #institution-registration form input[type="checkbox"] {
             margin-right: 5px;
         }
+        .institution-profile {
+            display: flex; /* Use Flexbox */
+            justify-content: space-between; /* Distribute space between items */
+            align-items: flex-start; /* Align items to the start of the cross axis */
+            margin-bottom: 20px; /* Add some space below each profile */
+            border: 1px solid #ccc; /* Add a border for visual separation */
+            padding: 15px; /* Add some padding */
+            background-color: #fff; /* White background */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Add a subtle shadow */
+        }
+
+        .institution-details {
+            flex: 2; /* Allow details to take up more space */
+            margin-right: 20px; /* Add space between details and items */
+        }
+
+        .needed-items-list {
+            flex: 1; /* Allow items list to take up remaining space */
+        }
+
+        .needed-items-list ul {
+            padding: 0;
+        }
+
+        .needed-items-list li {
+            margin-bottom: 5px; /* Space between list items */
+        }
+        .flashes {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            background-color: #f8d7da; /* Light red background */
+            color: #721c24; /* Dark red text */
+            border: 1px solid #f5c6cb; /* Red border */
+            padding: 10px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -134,51 +171,48 @@
             {% endif %}
         {% endwith %}
         <!-- This section will list the registered institutions -->
-        <div id="institutions-list">
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    <ul class="flashes">
-                        {% for message in messages %}
-                            <li>{{ message }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            {% endwith %}
-
-            <h2>Registered Institutions</h2> {# Add the heading back #}
-
+      <div id="institutions-list">
+            {# ... flash messages ... #}
+            <h2>Registered Institutions</h2>
             {% if institutions %}
                 {% for institution in institutions %}
                     <div class="institution-profile">
-                        <h3>{{ institution[1] }}</h3> {# Name #}
-                        <p><strong>Location:</strong> {{ institution[2] }}</p> {# Location #}
-                        <p><strong>Contact Email:</strong> {{ institution[3] }}</p> {# Email #}
-                        <p><strong>Contact Phone:</strong> {{ institution[4] }}</p> {# Phone #}
+                        <div class="institution-details"> {# Wrap details #}
+                            <h3>{{ institution.name }}</h3>
+                            <p><strong>Location:</strong> {{ institution.location }}</p>
+                            <p><strong>Contact Email:</strong> {{ institution.email }}</p>
+                            <p><strong>Contact Phone:</strong> {{ institution.phone }}</p>
+                            {% if institution.website %}
+                                <p><strong>Website:</strong> <a href="{{ institution.website }}" target="_blank">{{ institution.website }}</a></p>
+                            {% endif %}
+                            <p><strong>Type:</strong> {{ institution.type }}</p>
+                            {% if institution.photo_filename %}
+                                <img src="{{ url_for('static', filename='uploads/' + institution.photo_filename) }}" alt="{{ institution.name }} Photo" width="150">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='images/default_institution.png') }}" alt="Default Photo" width="150">
+                            {% endif %}
+                        </div> {# End institution-details #}
 
-                        {% if institution[5] %} {# Check if website exists #}
-                            <p><strong>Website:</strong> <a href="{{ institution[5] }}" target="_blank">{{ institution[5] }}</a></p> {# Website #}
-                        {% endif %}
-
-                        <p><strong>Type:</strong> {{ institution[6] }}</p> {# Type #}
-
-                        {% if institution[7] %} {# Check if photo_filename exists #}
-                            <img src="{{ url_for('static', filename='uploads/' + institution[7]) }}" alt="{{ institution[1] }} Photo" width="150"> {# Photo #}
-                        {% else %}
-                            <img src="{{ url_for('static', filename='images/default_institution.png') }}" alt="Default Photo" width="150"> {# Default photo #}
-                        {% endif %}
-
-                        <p><strong>Needed Items:</strong></p>
-                        <ul>
-                            {# We'll need to fetch and display needed items separately later #}
-                            <li>Loading needed items...</li>
-                        </ul>
+                        <div class="needed-items-list"> {# Wrap needed items list #}
+                            <p><strong>Needed Items:</strong></p>
+                            <ul>
+                                {% if institution.needed_items %}
+                                    {% for item in institution.needed_items %}
+                                        <li>{{ item }}</li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li>No specific items listed.</li>
+                                {% endif %}
+                            </ul>
+                            <a href="{{ url_for('donate', institution_id=institution.id) }}" class="button">Donate</a> {# Add the donate button #}
+                        </div> {# End needed-items-list #}
                     </div>
-                    <hr> {# Add a horizontal rule between institutions #}
+                    <hr>
                 {% endfor %}
             {% else %}
                 <p>No institutions registered yet.</p>
             {% endif %}
-        </div>     
+        </div>    
 
         <h2>Register Your Institution</h2>
         <!-- This section will contain the registration form -->
@@ -198,7 +232,7 @@
                     </select>
                 </p>
                 <p>Website (Optional): <input type="url" name="website"></p>
-<p>Institution Photo (Optional): <input type="file" name="photo" accept="image/*"></p>
+                <p>Institution Photo (Optional): <input type="file" name="photo" accept="image/*"></p>
                  <div style="grid-column: span 2;"> {# This div will span both columns #}
                     <p>Items Needed (Select all that apply):</p>
                     <p>

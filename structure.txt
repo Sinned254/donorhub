@@ -2,6 +2,7 @@ charity-connect/
 ├── static/
 │   ├── css/
 │   └── js/
+|     
 ├── templates/
 ├── venv/
 ├── app.py

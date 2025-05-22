@@ -8,7 +8,7 @@ def create_app():
 
 app = Flask(__name__)
 app.secret_key = 'mwambui' # Add a secret key for sessions
-# Database Configuration (Replace with your actual database credentials)
+# Database Configuration
 DATABASE_URL = "postgresql://postgres:r2d2c3po@localhost:5432/dhub"
 # Function to get a database connection
 def get_db_connection():
@@ -82,7 +82,6 @@ def register_institution():
             conn = get_db_connection()
             cur = conn.cursor()
 
-            # ... (rest of your form data retrieval and photo upload logic) ...
             name = request.form['name']
             email = request.form['email']
             phone = request.form['phone']
@@ -156,13 +155,130 @@ def register_institution():
             if conn:
                 conn.close()
 
-
-@app.route('/donate/<int:institution_id>')
+@app.route('/donate/<int:institution_id>', methods=['GET', 'POST'])
 def donate(institution_id):
-    # This is a placeholder for the donate page
-    # You will implement the donation logic here later
-    return f"This is the donate page for institution with ID: {institution_id}"
+    conn = None
+    cur = None
+    institution = None
+    items = [] # To store the list of available items
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # --- GET Request ---
+        if request.method == 'GET':
+            # Fetch institution details
+            cur.execute("SELECT id, name FROM institutions WHERE id = %s;", (institution_id,))
+            institution_data = cur.fetchone()
+            if institution_data:
+                institution = {'id': institution_data[0], 'name': institution_data[1]}
+            else:
+                # Handle case where institution is not found
+                flash("Institution not found.", "danger")
+                return redirect(url_for('institutions'))
+
+            # Fetch all available donation items from the 'items' table, excluding non-donatable types
+            cur.execute("SELECT id, name FROM items WHERE name NOT IN ('Cash', 'Service') ORDER BY name;")
+            items_data = cur.fetchall()
+            items = [{'id': row[0], 'name': row[1]} for row in items_data]
+
+            return render_template('donate.html', institution=institution, items=items)
+
+        # --- POST Request ---
+        elif request.method == 'POST':
+            # Get form data
+            donor_name = request.form['donor_name']
+            donor_email = request.form.get('donor_email')
+            donor_phone = request.form.get('donor_phone')
+            donor_type = request.form['donor_type']
+            donation_type = request.form['donation_type']
+            message = request.form.get('message')
+
+            # *** Add server-side validation for mandatory fields ***
+            if not donor_email:
+                flash("Email is required.", "warning")
+                return redirect(url_for('donate', institution_id=institution_id))
+
+            if not donor_phone:
+                flash("Phone number is required.", "warning")
+                return redirect(url_for('donate', institution_id=institution_id))
+            # *** End of new validation ***
+
+            donation_amount = None
+            item_id = None
+            item_quantity = None
+            item_condition = None
+            service_description = None
+
+            # Validate and get data based on donation type (existing code)
+            if donation_type == 'cash':
+                # ... (cash validation) ...
+                donation_amount = request.form.get('donation_amount')
+                if not donation_amount or float(donation_amount) <= 0:
+                     flash("Please enter a valid donation amount.", "warning")
+                     return redirect(url_for('donate', institution_id=institution_id))
+                donation_amount = float(donation_amount)
 
 
+            elif donation_type == 'item':
+                # ... (item validation) ...
+                item_id = request.form.get('item_id')
+                item_quantity = request.form.get('item_quantity')
+                item_condition = request.form.get('item_condition')
+
+                if not item_id or not item_quantity or int(item_quantity) <= 0:
+                    flash("Please select an item and enter a valid quantity.", "warning")
+                    return redirect(url_for('donate', institution_id=institution_id))
+                item_id = int(item_id)
+                item_quantity = int(item_quantity)
+
+            elif donation_type == 'service':
+                # ... (service validation) ...
+                service_description = request.form.get('service_description')
+                if not service_description or not service_description.strip():
+                     flash("Please provide a description of the service.", "warning")
+                     return redirect(url_for('donate', institution_id=institution_id))
+
+
+            else:
+                # Handle invalid donation type
+                flash("Invalid donation type selected.", "warning")
+                return redirect(url_for('donate', institution_id=institution_id))
+
+
+            # Insert donation record into the donations table (existing code)
+            cur.execute(
+                """
+                INSERT INTO donations (
+                    institution_id, donor_name, donor_email, donor_phone, donor_type,
+                    donation_type, donation_amount, item_id, item_quantity,
+                    item_condition, service_description, message
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                """,
+                (
+                    institution_id, donor_name, donor_email, donor_phone, donor_type,
+                    donation_type, donation_amount, item_id, item_quantity,
+                    item_condition, service_description, message
+                )
+            )
+
+            conn.commit()
+
+            flash("Thank you for your donation!", "success")
+            return redirect(url_for('institutions'))
+
+    except (psycopg2.Error, Exception) as e:
+        if conn:
+            conn.rollback()
+        print(f"An error occurred during donation: {e}")
+        flash("An error occurred during your donation. Please try again.", "danger")
+        return redirect(url_for('donate', institution_id=institution_id))
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+    
 if __name__ == '__main__':
     app.run(debug=True)

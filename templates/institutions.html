@@ -4,149 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Charity Connect - Institutions</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4; /* Light gray background */
-        }
-
-        header {
-            background-color: #7d3c98; /* A shade of purple */
-            color: white;
-            padding: 0.5em 0;
-            text-align: center;
-            width: auto;
-            margin: 0;
-        }
-
-        nav {
-            background-color: #9b59b6; /* Another shade of purple */
-            padding: 0.3em 0;
-            text-align: center;
-            width: auto;
-            margin: 0;
-        }
-
-        nav a {
-            color: white;
-            text-decoration: none;
-            margin: 0 1em;
-            font-weight: bold;
-        }
-
-        .container {
-            width: 80%;
-            margin: 2em auto;
-            background-color: white;
-            padding: 2em;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        h1, h2 {
-            color: #7d3c98; /* Purple headings */
-        }
-
-        footer {
-            text-align: center;
-            padding: 1em 0;
-            margin-top: 2em;
-            color: #7d3c98; /* Purple footer text */
-        }
-
-        .button {
-            display: inline-block;
-            background-color: #ffc300; /* A shade of gold/yellow */
-            color: #333; /* Dark text for contrast */
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-right: 10px;
-        }
-
-        /* Form Styling */
-        #institution-registration form {
-            display: grid;
-            grid-template-columns: 1fr 1fr; /* Two columns for form fields */
-            gap: 15px; /* Space between grid items */
-        }
-
-        #institution-registration form p {
-            margin-bottom: 10px;
-        }
-
-        #institution-registration form input[type="text"],
-        #institution-registration form input[type="email"],
-        #institution-registration form input[type="tel"],
-        #institution-registration form input[type="url"],
-        #institution-registration form select {
-            width: 100%; /* Make input fields fill their container */
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box; /* Include padding and border in element's total width and height */
-        }
-
-        #institution-registration form button {
-            /* Apply the button class styles */
-            background-color: #ffc300; /* A shade of gold/yellow */
-            color: #333; /* Dark text for contrast */
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            border: none; /* Remove default button border */
-            cursor: pointer; /* Indicate it's clickable */
-            grid-column: 1 / -1; /* Make the button span from the first to the last column line */
-            margin-top: 20px; /* Add some space above the button */
-        }
-
-        #institution-registration form button:hover {
-            background-color: #ffda66; /* Lighter shade on hover */
-        }
-
-        /* Style for checkboxes */
-        #institution-registration form input[type="checkbox"] {
-            margin-right: 5px;
-        }
-        .institution-profile {
-            display: flex; /* Use Flexbox */
-            justify-content: space-between; /* Distribute space between items */
-            align-items: flex-start; /* Align items to the start of the cross axis */
-            margin-bottom: 20px; /* Add some space below each profile */
-            border: 1px solid #ccc; /* Add a border for visual separation */
-            padding: 15px; /* Add some padding */
-            background-color: #fff; /* White background */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Add a subtle shadow */
-        }
-
-        .institution-details {
-            flex: 2; /* Allow details to take up more space */
-            margin-right: 20px; /* Add space between details and items */
-        }
-
-        .needed-items-list {
-            flex: 1; /* Allow items list to take up remaining space */
-        }
-
-        .needed-items-list ul {
-            padding: 0;
-        }
-
-        .needed-items-list li {
-            margin-bottom: 5px; /* Space between list items */
-        }
-        .flashes {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            background-color: #f8d7da; /* Light red background */
-            color: #721c24; /* Dark red text */
-            border: 1px solid #f5c6cb; /* Red border */
-            padding: 10px;
-            margin-bottom: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <header>
@@ -159,6 +17,15 @@
         <a href="institutions.html">Institutions</a>
         <a href="about.html">About</a>
     </nav>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
 
     <div class="container">
         {% with messages = get_flashed_messages() %}

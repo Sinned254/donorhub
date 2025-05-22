@@ -4,57 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About Charity Connect</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4; /* Light gray background */
-        }
-
-        header {
-            background-color: #7d3c98; /* A shade of purple */
-            color: white;
-            padding: 0.5em 0;
-            text-align: center;
-            width: auto;
-            margin: 0;
-        }
-
-        nav {
-            background-color: #9b59b6; /* Another shade of purple */
-            padding: 0.3em 0;
-            text-align: center;
-            width: auto;
-            margin: 0;
-        }
-
-        nav a {
-            color: white;
-            text-decoration: none;
-            margin: 0 1em;
-            font-weight: bold;
-        }
-
-        .container {
-            width: 80%;
-            margin: 2em auto;
-            background-color: white;
-            padding: 2em;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-
-        h1, h2 {
-            color: #7d3c98; /* Purple headings */
-        }
-
-        footer {
-            text-align: center;
-            padding: 1em 0;
-            margin-top: 2em;
-            color: #7d3c98; /* Purple footer text */
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <header>
@@ -69,6 +19,15 @@
     </nav>
 
     <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
         <h2>About Charity Connect</h2>
         <p>Our mission is to bridge the gap between generous donors and institutions in need. Whether you have clothing, food, furniture, or other items to donate, or you wish to offer services, Charity Connect provides a platform to easily connect with organizations making a difference in your community.</p>
 

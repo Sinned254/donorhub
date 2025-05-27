@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Institution - Charity Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Charity Connect</h1>
+        <p>Register your institution to connect with angels!</p>
+    </header>
+    <nav>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('about') }}">About</a>
+    </nav>
+    <div class="container" style="max-width: 600px; margin: 2rem auto;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+              {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+        <h2 style="text-align:center; color: var(--primary);">Register Your Institution</h2>
+        <form method="POST" enctype="multipart/form-data" class="register-institution-form">
+            <label for="name">Institution Name:</label>
+            <input type="text" id="name" name="name" required>
+
+            <label for="email">Contact Email:</label>
+            <input type="email" id="email" name="email" required>
+
+            <label for="phone">Contact Phone:</label>
+            <input type="tel" id="phone" name="phone" required>
+
+            <label for="location">Location:</label>
+            <input type="text" id="location" name="location" required>
+
+            <label for="type">Institution Type:</label>
+            <select id="type" name="type" required>
+                <option value="">Select Type</option>
+                <option value="learning">Learning Institution/School</option>
+                <option value="childrens_home">Children's Home</option>
+                <option value="safehub">Safehub for Domestic Violence</option>
+                <option value="other">Other</option>
+            </select>
+
+            <label for="website">Website (Optional):</label>
+            <input type="url" id="website" name="website">
+
+            <label for="photo">Institution Photo (Optional):</label>
+            <input type="file" id="photo" name="photo" accept="image/*">
+
+            <div class="checkbox-group">
+                <label>Items Needed (Select all that apply):</label><br>
+                <input type="checkbox" name="needed_items" value="cash"> Cash<br>
+                <input type="checkbox" name="needed_items" value="computers_laptops"> Computers and Laptops<br>
+                <input type="checkbox" name="needed_items" value="electronics"> Electronics (TVs, etc.)<br>
+                <input type="checkbox" name="needed_items" value="furniture"> Furniture (Beds, Chairs, etc.)<br>
+                <input type="checkbox" name="needed_items" value="clothing"> Clothing<br>
+                <input type="checkbox" name="needed_items" value="food_stuff"> Food Stuff (Rice, Beans, etc.)<br>
+                <input type="checkbox" name="needed_items" value="infrastructure"> Infrastructure (Building Materials)<br>
+                <input type="checkbox" name="needed_items" value="service"> Service (Arrange Visitation, Counseling, etc.)<br>
+                <input type="checkbox" name="needed_items" value="sporting_equipment"> Sporting Equipments<br>
+                <input type="checkbox" name="needed_items" value="other"> Other<br>
+            </div>
+            <div id="other-item-specification" style="display: none;">
+                <label for="other_item_spec">Please specify other item(s):</label>
+                <input type="text" id="other_item_spec" name="other_item_spec">
+            </div>
+            <button type="submit" class="button">Register</button>
+        </form>
+    </div>
+    <footer>
+        &copy; 2023 Charity Connect
+    </footer>
+    <script>
+        const otherCheckbox = document.querySelector('input[value="other"][name="needed_items"]');
+        const otherItemSpecification = document.getElementById('other-item-specification');
+        if (otherCheckbox && otherItemSpecification) {
+            otherCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    otherItemSpecification.style.display = 'block';
+                } else {
+                    otherItemSpecification.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -9,15 +9,18 @@
 <body>
     <header>
         <h1>Charity Connect</h1>
-        <p>Connecting donors with charitable institutions</p>
+        <p>Connecting angels with charitable institutions</p>
     </header>
 
     <nav>
-        <a href="index.html">Home</a>
-        <a href="institutions.html">Institutions</a>
-        <a href="about.html">About</a>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('about') }}">About</a>
     </nav>
-    {% with messages = get_flashed_messages(with_categories=true) %}
+
+    <div class="container">
+        <!-- Flash messages block -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <ul class="flashes">
                 {% for category, message in messages %}
@@ -25,26 +28,14 @@
                 {% endfor %}
             </ul>
         {% endif %}
-    {% endwith %}
-
-    <div class="container">
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <ul class="flashes">
-                    {% for message in messages %}
-                        <li>{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
         {% endwith %}
-        <!-- This section will list the registered institutions -->
-      <div id="institutions-list">
-            {# ... flash messages ... #}
+        <div id="institutions-list">
             <h2>Registered Institutions</h2>
+            <p>See what our community of <strong>angels</strong> can support today!</p>
             {% if institutions %}
                 {% for institution in institutions %}
                     <div class="institution-profile">
-                        <div class="institution-details"> {# Wrap details #}
+                        <div class="institution-details">
                             <h3>{{ institution.name }}</h3>
                             <p><strong>Location:</strong> {{ institution.location }}</p>
                             <p><strong>Contact Email:</strong> {{ institution.email }}</p>
@@ -58,9 +49,8 @@
                             {% else %}
                                 <img src="{{ url_for('static', filename='images/default_institution.png') }}" alt="Default Photo" width="150">
                             {% endif %}
-                        </div> {# End institution-details #}
-
-                        <div class="needed-items-list"> {# Wrap needed items list #}
+                        </div>
+                        <div class="needed-items-list">
                             <p><strong>Needed Items:</strong></p>
                             <ul>
                                 {% if institution.needed_items %}
@@ -71,75 +61,22 @@
                                     <li>No specific items listed.</li>
                                 {% endif %}
                             </ul>
-                            <a href="{{ url_for('donate', institution_id=institution.id) }}" class="button">Donate</a> {# Add the donate button #}
-                        </div> {# End needed-items-list #}
+                            <a href="{{ url_for('donate', institution_id=institution.id) }}" class="button">Donate</a>
+                        </div>
                     </div>
                     <hr>
                 {% endfor %}
             {% else %}
                 <p>No institutions registered yet.</p>
             {% endif %}
-        </div>    
-
-        <h2>Register Your Institution</h2>
-        <!-- This section will contain the registration form -->
-        <div id="institution-registration">
-            <form method="POST" enctype="multipart/form-data">
-                <p>Institution Name: <input type="text" name="name" required></p>
-                <p>Email: <input type="email" name="email" required></p>
-                <p>Phone: <input type="tel" name="phone" required></p>
-                <p>Location: <input type="text" name="location" required></p>
-                <p>Institution Type:
-                    <select name="type" required>
-                        <option value="">Select Type</option>
-                        <option value="learning">Learning Institution/School</option>
-                        <option value="childrens_home">Children's Home</option>
-                        <option value="safehub">Safehub for Domestic Violence</option>
-                        <option value="other">Other</option>
-                    </select>
-                </p>
-                <p>Website (Optional): <input type="url" name="website"></p>
-                <p>Institution Photo (Optional): <input type="file" name="photo" accept="image/*"></p>
-                 <div style="grid-column: span 2;"> {# This div will span both columns #}
-                    <p>Items Needed (Select all that apply):</p>
-                    <p>
-                        <input type="checkbox" name="needed_items" value="cash"> Cash<br>
-                        <input type="checkbox" name="needed_items" value="computers_laptops"> Computers and Laptops<br>
-                        <input type="checkbox" name="needed_items" value="electronics"> Electronics (TVs, etc.)<br>
-                        <input type="checkbox" name="needed_items" value="furniture"> Furniture (Beds, Chairs, etc.)<br>
-                        <input type="checkbox" name="needed_items" value="clothing"> Clothing<br>
-                        <input type="checkbox" name="needed_items" value="food_stuff"> Food Stuff (Rice, Beans, etc.)<br>
-                        <input type="checkbox" name="needed_items" value="infrastructure"> Infrastructure (Building Materials)<br>
-                        <input type="checkbox" name="needed_items" value="service"> Service (Arrange Visitation, Counseling, etc.)<br>
-                        <input type="checkbox" name="needed_items" value="sporting_equipment"> Sporting Equipments<br>
-                        <input type="checkbox" name="needed_items" value="other"> Other<br>
-                    </p>
-                </div>
-                 <div id="other-item-specification" style="display: none; grid-column: span 2;">
-                     <p>Please specify other item(s): <input type="text" name="other_item_spec"></p>
-                 </div>
-                <div style="grid-column: 1 / -1; text-align: center; margin-top: 20px;">
-                    <button type="submit" class="button">Register</button>
-                </div>
-            </form>
+        </div>
+        <div style="text-align:center; margin: 2em 0;">
+            <a href="{{ url_for('login') }}" class="button" style="font-size:1.2em;">Register Your Institution</a>
         </div>
     </div>
 
     <footer>
         &copy; 2023 Charity Connect
     </footer>
-
-    <script>
-        const otherCheckbox = document.querySelector('input[value="other"][name="needed_items"]');
-        const otherItemSpecification = document.getElementById('other-item-specification');
-
-        otherCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                otherItemSpecification.style.display = 'block';
-            } else {
-                otherItemSpecification.style.display = 'none';
-            }
-        });
-    </script>
 </body>
 </html>

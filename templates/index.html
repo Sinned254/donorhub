@@ -9,15 +9,14 @@
 <body>
     <header>
         <h1>Charity Connect</h1>
-        <p>Connecting donors with charitable institutions</p>
+        <p>Connecting angels with charitable institutions</p>
     </header>
 
     <nav>
-        <a href="index.html">Home</a>
-        <a href="institutions.html">Institutions</a>
-        <a href="about.html">About</a>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('about') }}">About</a>
     </nav>
-
 
     <div class="container">
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -30,28 +29,27 @@
                 {% endif %}
             {% endwith %}
         <h2>Welcome to Charity Connect</h2>
-        <p>Our mission is to bridge the gap between generous donors and institutions in need. Whether you have clothing, food, furniture, or other items to donate, or you wish to offer services, Charity Connect provides a platform to easily connect with organizations making a difference in your community.</p>
+        <p>Our mission is to bridge the gap between generous <strong>angels</strong> and institutions in need. Whether you have clothing, food, furniture, or other items to share, or you wish to offer services, Charity Connect provides a platform to easily connect with organizations making a difference in your community.</p>
 
         <p>Browse our list of registered institutions to find causes you care about and see what items they currently need. Your contribution, no matter how small, can have a significant impact.</p>
     </div>
 
     <div class="container">
         <h2>How It Works</h2>
-        <p>Donating through Charity Connect is simple:</p>
+        <p>Giving through Charity Connect is simple:</p>
         <ol>
-            <li>**Browse Institutions:** Explore our list of registered charitable institutions.</li>
-            <li>**Find a Cause:** Choose an institution and see what items they need.</li>
-            <li>**Donate:** Click the "Donate" button on the institution's page and fill out the donation form.</li>
-            <li>**Make a Difference:** Your donation details are sent directly to the institution.</li>
+            <li><strong>Browse Institutions:</strong> Explore our list of registered charitable institutions.</li>
+            <li><strong>Find a Cause:</strong> Choose an institution and see what items they need.</li>
+            <li><strong>Become an Angel:</strong> Click the "Donate" button on the institution's page and fill out the donation form.</li>
         </ol>
+    </div>
 
-        <hr>
-
+    <div class="container">
         <h2>Make a Difference Today</h2>
         <p>Ready to help? Choose how you want to get involved:</p>
         <p>
-            <a href="institutions.html" class="button">Find Institutions to Donate To</a>
-            <a href="#" class="button">Register Your Institution</a>
+            <a href="{{ url_for('institutions') }}" class="button">Find Institutions to Donate To</a>
+                        <a href="{{ url_for('register') }}" class="button">Register Your Institution</a>
         </p>
     </div>
 

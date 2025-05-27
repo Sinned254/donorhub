@@ -6,7 +6,6 @@
     <title>Donate - Charity Connect</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* Add specific styles for the donate page here */
         .donate-form-container {
             width: 60%;
             margin: 2em auto;
@@ -14,18 +13,15 @@
             padding: 2em;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-
         .donate-form-container h2 {
-            color: #7d3c98; /* Purple heading */
+            color: #7d3c98;
             margin-bottom: 1em;
         }
-
         .donate-form-container form label {
             display: block;
             margin-bottom: 0.5em;
             font-weight: bold;
         }
-
         .donate-form-container form input[type="text"],
         .donate-form-container form input[type="email"],
         .donate-form-container form input[type="number"],
@@ -38,14 +34,11 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
-
-         .donate-form-container form .donation-type-section {
+        .donate-form-container form .donation-type-section {
             margin-top: 1.5em;
             padding-top: 1.5em;
             border-top: 1px solid #eee;
-         }
-
-
+        }
         .donate-form-container form button {
             background-color: #ffc300;
             color: #333;
@@ -55,8 +48,7 @@
             border: none;
             cursor: pointer;
         }
-
-         .donate-form-container form button:hover {
+        .donate-form-container form button:hover {
             background-color: #ffda66;
         }
     </style>
@@ -64,7 +56,7 @@
 <body>
     <header>
         <h1>Charity Connect</h1>
-        <p>Connecting donors with charitable institutions</p>
+        <p>Connecting angels with charitable institutions</p>
     </header>
 
     <nav>
@@ -81,7 +73,7 @@
                     <li class="{{ category }}">{{ message }}</li>
                 {% endfor %}
             </ul>
-            {% endif %}
+        {% endif %}
         {% endwith %}
 
         <div class="donate-form-container">
@@ -93,11 +85,11 @@
                 <label for="donor_name">Your Name:</label>
                 <input type="text" id="donor_name" name="donor_name" required>
 
-                <label for="donor_email">Your Email:</label> {# Removed "(Optional)" #}
-                <input type="email" id="donor_email" name="donor_email" required> {# Added required #}
+                <label for="donor_email">Your Email:</label>
+                <input type="email" id="donor_email" name="donor_email" required>
 
-                <label for="donor_phone">Your Phone:</label> {# Removed "(Optional)" #}
-                <input type="text" id="donor_phone" name="donor_phone" required> {# Added required #} {# Or type="tel" #}
+                <label for="donor_phone">Your Phone:</label>
+                <input type="text" id="donor_phone" name="donor_phone" required>
 
                 <label for="donor_type">I am donating as a:</label>
                 <select id="donor_type" name="donor_type" required>
@@ -105,7 +97,6 @@
                     <option value="individual">Individual</option>
                     <option value="organization">Organization</option>
                 </select>
-
 
                 <label for="donation_type">What would you like to donate?</label>
                 <select id="donation_type" name="donation_type" required>
@@ -121,15 +112,15 @@
                 </div>
 
                 <div id="item_section" class="donation-type-section" style="display: none;">
-                     <label for="item_id">Select Item:</label>
-                     <select id="item_id" name="item_id">
-                          <option value="">-- Select Item --</option>
-                           {% if items %}
-                               {% for item in items %}
-                                    <option value="{{ item.id }}">{{ item.name }}</option>
-                               {% endfor %}
-                           {% endif %}
-                     </select>
+                    <label for="item_id">Select Item:</label>
+                    <select id="item_id" name="item_id">
+                        <option value="">-- Select Item --</option>
+                        {% if items %}
+                            {% for item in items %}
+                                <option value="{{ item.id }}">{{ item.name }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
 
                     <label for="item_quantity">Quantity:</label>
                     <input type="number" id="item_quantity" name="item_quantity" min="1">
@@ -161,11 +152,8 @@
         const itemSection = document.getElementById('item_section');
         const serviceSection = document.getElementById('service_section');
 
-        // Function to update required attributes based on selected type
         function updateRequiredFields() {
             const selectedType = donationTypeSelect.value;
-
-            // Remove required from all specific fields first
             document.getElementById('donation_amount').removeAttribute('required');
             document.getElementById('item_id').removeAttribute('required');
             document.getElementById('item_quantity').removeAttribute('required');
@@ -181,14 +169,11 @@
             }
         }
 
-
         donationTypeSelect.addEventListener('change', function() {
-            // Hide all sections first
             cashSection.style.display = 'none';
             itemSection.style.display = 'none';
             serviceSection.style.display = 'none';
 
-            // Show the selected section
             if (this.value === 'cash') {
                 cashSection.style.display = 'block';
             } else if (this.value === 'item') {
@@ -196,15 +181,10 @@
             } else if (this.value === 'service') {
                 serviceSection.style.display = 'block';
             }
-
-            // Update required attributes
             updateRequiredFields();
         });
 
-        // Also call updateRequiredFields on page load to handle initial state
-        // (Important if you ever pre-select a value in the dropdown)
         updateRequiredFields();
-
     </script>
 </body>
 </html>

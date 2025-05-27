@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ institution.name }} - Charity Connect</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <style>
+            /* Add specific styles for viewing institution */
+            .institution-details {
+                margin-top: 20px;
+            }
+            .institution-details img {
+                max-width: 200px;
+                height: auto;
+                margin-bottom: 15px;
+            }
+            .needed-items-list {
+                list-style: disc;
+                margin-left: 20px;
+            }
+
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>Charity Connect</h1>
+            <p>Connecting donors with charitable institutions</p>
+        </header>
+
+        <nav>
+            <a href="{{ url_for('index') }}">Home</a>
+            <a href="{{ url_for('institutions') }}">Institutions</a>
+            <a href="{{ url_for('about') }}">About</a>
+        </nav>
+
+        <div class="container">
+            {# Flash messages display #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flashes">
+                        {% for category, message in messages %}
+                            <li class="{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            <div class="institution-details">
+                <h2>{{ institution.name }}</h2>
+                {% if institution.photo_filename %}
+                    <img src="{{ url_for('static', filename='uploads/' + institution.photo_filename) }}" alt="{{ institution.name }} Photo">
+                {% endif %}
+                <p><strong>Type:</strong> {{ institution.type }}</p>
+                <p><strong>Location:</strong> {{ institution.location }}</p>
+                <p><strong>Phone:</strong> {{ institution.phone }}</p>
+                <p><strong>Email:</strong> {{ institution.email }}</p>
+                {% if institution.website %}
+                    <p><strong>Website:</strong> <a href="{{ institution.website }}" target="_blank">{{ institution.website }}</a></p>
+                {% endif %}
+
+                <h3>Items Needed:</h3>
+                {% if needed_items %}
+                    <ul class="needed-items-list">
+                        {% for item in needed_items %}
+                            <li>{{ item.name }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No specific items listed as needed at this time.</p>
+                {% endif %}
+
+                <p><a href="{{ url_for('edit_institution', institution_id=institution.id) }}">Edit Institution</a></p>
+                 <p><a href="{{ url_for('institutions') }}">Back to Institutions List</a></p>
+
+            </div>
+        </div>
+
+        <footer>
+            &copy; 2023 Charity Connect
+        </footer>
+    </body>
+    </html>

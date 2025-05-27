@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Institution - Charity Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Charity Connect</h1>
+        <p>Edit your institution details</p>
+    </header>
+    <nav>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('about') }}">About</a>
+    </nav>
+
+    <div class="form-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <h2>Edit Institution: {{ institution.name }}</h2>
+
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="institution_id" value="{{ institution.id }}">
+
+            <label for="name">Institution Name:</label>
+            <input type="text" id="name" name="name" value="{{ institution.name }}" required>
+
+            <label for="type">Institution Type:</label>
+            <select id="type" name="type" required>
+                <option value="">-- Select Type --</option>
+                <option value="learning" {% if institution.type == 'learning' %}selected{% endif %}>Learning Institution/School</option>
+                <option value="childrens_home" {% if institution.type == "childrens_home" %}selected{% endif %}>Children's Home</option>
+                <option value="safehub" {% if institution.type == 'safehub' %}selected{% endif %}>Safehub for Domestic Violence</option>
+                <option value="other" {% if institution.type == 'other' %}selected{% endif %}>Other</option>
+            </select>
+
+            <label for="location">Location:</label>
+            <input type="text" id="location" name="location" value="{{ institution.location }}" required>
+
+            <label for="phone">Phone:</label>
+            <input type="text" id="phone" name="phone" value="{{ institution.phone }}" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" value="{{ institution.email }}" required>
+
+            <label for="website">Website (Optional):</label>
+            <input type="url" id="website" name="website" value="{{ institution.website }}">
+
+            <label for="photo">Institution Photo (Optional):</label>
+            <input type="file" id="photo" name="photo" accept="image/*">
+            {% if institution.photo_filename %}
+                <p>Current Photo: <img src="{{ url_for('static', filename='uploads/' + institution.photo_filename) }}" alt="Institution Photo" width="100"></p>
+            {% endif %}
+
+            <label>Items Needed (Select all that apply):</label>
+            <div class="checkbox-group">
+                {% for item in all_items %}
+                    <div>
+                        <input type="checkbox" name="needed_items" value="{{ item.id }}" id="item_{{ item.id }}"
+                        {% if item.id in needed_items_ids %}checked{% endif %}>
+                        <label for="item_{{ item.id }}">{{ item.name }}</label>
+                    </div>
+                {% endfor %}
+                <div>
+                    <input type="checkbox" name="needed_items" value="other" id="item_other"
+                    {% if institution.other_item_spec %}checked{% endif %}>
+                    <label for="item_other">Other</label>
+                </div>
+            </div>
+            <div id="other-item-specification" style="{% if institution.other_item_spec %}display: block;{% else %}display: none;{% endif %}">
+                <label for="other_item_spec">Please specify other item(s):</label>
+                <input type="text" id="other_item_spec" name="other_item_spec" value="{{ institution.other_item_spec or '' }}">
+            </div>
+
+            <div style="display: flex; gap: 1em; margin-top: 1.5em;">
+                <button type="submit" class="button">Update Institution</button>
+                <a href="{{ url_for('my_institution') }}" class="button" style="text-align:center; line-height:2.2;">Back</a>
+            </div>
+        </form>
+    </div>
+
+    <footer>
+        &copy; 2023 Charity Connect
+    </footer>
+
+    <script>
+        // Show/hide the 'other' item specification field
+        const otherCheckbox = document.getElementById('item_other');
+        const otherItemSpecificationDiv = document.getElementById('other-item-specification');
+        const otherItemSpecInput = document.getElementById('other_item_spec');
+        function toggleOtherItemSpecification() {
+            if (otherCheckbox.checked) {
+                otherItemSpecificationDiv.style.display = 'block';
+                otherItemSpecInput.setAttribute('required', 'required');
+            } else {
+                otherItemSpecificationDiv.style.display = 'none';
+                otherItemSpecInput.removeAttribute('required');
+                otherItemSpecInput.value = '';
+            }
+        }
+        otherCheckbox.addEventListener('change', toggleOtherItemSpecification);
+        toggleOtherItemSpecification();
+    </script>
+</body>
+</html>

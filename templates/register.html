@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Charity Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Charity Connect</h1>
+        <p>Help make a difference!</p>
+    </header>
+    <nav>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('about') }}">About</a>
+    </nav>
+    <div class="form-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+        <h2>Register</h2>
+        <form method="POST" action="{{ url_for('register') }}">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required value="{{ email|default('') }}">
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+
+            <label for="confirm_password">Confirm Password:</label>
+            <input type="password" id="confirm_password" name="confirm_password" required>
+
+            <button type="submit" class="button">Register</button>
+        </form>
+        <p style="text-align:center; margin-top:1.5em;">
+            Already Registered? <a href="{{ url_for('login') }}" style="color: var(--primary); font-weight: 500;">Login here</a>.
+        </p>
+    </div>
+    <footer>
+        &copy; 2023 Charity Connect
+    </footer>
+</body>
+</html>

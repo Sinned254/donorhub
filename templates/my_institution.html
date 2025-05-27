@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Institution - Charity Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .institution-dashboard-flex {
+            display: flex;
+            gap: 2rem;
+        }
+        .institution-sidebar {
+            min-width: 220px;
+            background: #f7f7f7;
+            padding: 1em;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            height: fit-content;
+        }
+        .institution-main {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Charity Connect</h1>
+        <p>Your Institution Dashboard</p>
+    </header>
+    <nav>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('about') }}">About</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </nav>
+    <div class="container">
+        <div class="institution-dashboard-flex">
+            <!-- Main Content -->
+            <div class="institution-main">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <ul class="flashes">
+                            {% for category, message in messages %}
+                                <li class="{{ category }}">{{ message }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
+                <h2>{{ institution.name }}</h2>
+                <p><strong>Location:</strong> {{ institution.location }}</p>
+                <p><strong>Contact Email:</strong> {{ institution.email }}</p>
+                <p><strong>Contact Phone:</strong> {{ institution.phone }}</p>
+                <p><strong>Type:</strong> {{ institution.type }}</p>
+                <p><strong>Website:</strong> 
+                    {% if institution.website %}
+                        <a href="{{ institution.website }}" target="_blank">{{ institution.website }}</a>
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </p>
+                {% if institution.photo_filename %}
+                    <img src="{{ url_for('static', filename='uploads/' + institution.photo_filename) }}" alt="{{ institution.name }} Photo" width="150">
+                {% endif %}
+                <div style="margin: 1.5em 0;">
+                    <a href="{{ url_for('edit_institution', institution_id=institution.id) }}" class="button">Edit Institution</a>
+                </div>
+            </div>
+            <!-- Sidebar: Items Needed (right) -->
+            <div class="institution-sidebar">
+                <h3>Items Needed</h3>
+                <ul>
+                    {% if needed_items %}
+                        {% for item in needed_items %}
+                            <li>{{ item }}</li>
+                        {% endfor %}
+                    {% else %}
+                        <li>No items registered.</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+        <!-- Donations Table OUTSIDE the flex for full width -->
+        <div style="margin-top:2em;">
+            <h3>Donations Received</h3>
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background: var(--accent-light);">
+                        <th>Donor Name</th>
+                        <th>Email</th>
+                        <th>Type</th>
+                        <th>Item/Service</th>
+                        <th>Amount/Quantity</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if donations %}
+                        {% for donation in donations %}
+                            <tr>
+                                <td>{{ donation.donor_name }}</td>
+                                <td>{{ donation.donor_email }}</td>
+                                <td>{{ donation.donation_type|capitalize }}</td>
+                                <td>
+                                    {% if donation.donation_type == 'item' %}
+                                        {{ donation.item_name }}
+                                    {% elif donation.donation_type == 'service' %}
+                                        {{ donation.service_description }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if donation.donation_type == 'cash' %}
+                                        ${{ donation.donation_amount }}
+                                    {% elif donation.donation_type == 'item' %}
+                                        {{ donation.item_quantity }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ donation.donation_date.strftime('%Y-%m-%d') if donation.donation_date else '' }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align:center;">No donations yet.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <footer>
+        &copy; 2023 Charity Connect
+    </footer>
+</body>
+</html>

@@ -12,13 +12,40 @@
         <p>Connecting angels with charitable institutions</p>
     </header>
 
-    <nav>
-        <a href="{{ url_for('index') }}">Home</a>
-        <a href="{{ url_for('institutions') }}">Institutions</a>
-        <a href="{{ url_for('about') }}">About</a>
-    </nav>
+            <nav style="display: flex; justify-content: center; align-items: center; gap: 1.5em; margin-bottom: 1.5em;">
+                <a href="{{ url_for('index') }}">Home</a>
+                <a href="{{ url_for('institutions') }}">Institutions</a>
+                <a href="{{ url_for('contact') }}">Contact Us</a>
+                <a href="{{ url_for('about') }}">About</a>
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <a href="{{ url_for('admin') }}">Admin Portal</a>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+                {% elif current_user.is_authenticated and current_user.role == 'institution_admin' %}
+                    <a href="{{ url_for('my_institution') }}">My Institution</a>
+                    <a href="{{ url_for('logout') }}">Logout</a>
+                {% elif not current_user.is_authenticated %}
+                    <a href="{{ url_for('login') }}" style="color: #232946; background: #ffc300; padding: 0.4em 1em; border-radius: 5px; text-decoration: none; font-size: 1em; opacity: 0.85;">Login</a>
+                {% endif %}
+            </nav>
 
     <div class="container">
+        <!-- Filter Form -->
+        <form method="get" action="{{ url_for('institutions') }}" style="display:flex; gap:1em; align-items:center; margin-bottom:2em; flex-wrap:wrap;">
+            <input type="text" name="search" placeholder="Search by name or email" value="{{ request.args.get('search', '') }}" style="padding:0.4em; min-width:180px;">
+            <select name="location" style="padding:0.4em; min-width:140px;">
+                <option value="">All Locations</option>
+                {% for loc in locations %}
+                    <option value="{{ loc }}" {% if request.args.get('location') == loc %}selected{% endif %}>{{ loc }}</option>
+                {% endfor %}
+            </select>
+            <select name="type" style="padding:0.4em; min-width:140px;">
+                <option value="">All Types</option>
+                {% for t in types %}
+                    <option value="{{ t }}" {% if request.args.get('type') == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="button" style="background:#ffc300; color:#232946;">Filter</button>
+        </form>
         <!-- Flash messages block -->
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -73,6 +100,18 @@
         <div style="text-align:center; margin: 2em 0;">
             <a href="{{ url_for('login') }}" class="button" style="font-size:1.2em;">Register Your Institution</a>
         </div>
+
+        {% if total_pages > 1 %}
+        <div style="text-align:center; margin:1em 0;">
+            {% if page > 1 %}
+                <a href="{{ url_for('institutions', page=page-1) }}" class="button">&laquo; Prev</a>
+            {% endif %}
+            <span style="margin:0 1em;">Page {{ page }} of {{ total_pages }}</span>
+            {% if page < total_pages %}
+                <a href="{{ url_for('institutions', page=page+1) }}" class="button">Next &raquo;</a>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 
     <footer>

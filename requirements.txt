@@ -1,2 +1,7 @@
 Flask
-psycopg2-binary
+Flask-Login
+Flask-Mail
+psycopg2
+bcrypt
+itsdangerous
+python-dotenv

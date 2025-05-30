@@ -14,6 +14,7 @@
     <nav>
         <a href="{{ url_for('index') }}">Home</a>
         <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('contact') }}">Contact Us</a>
         <a href="{{ url_for('about') }}">About</a>
     </nav>
     <div class="form-container">
@@ -28,14 +29,28 @@
     {% endwith %}
         <h2>Register</h2>
         <form method="POST" action="{{ url_for('register') }}">
+            <label for="first_name">First Name:</label>
+            <input type="text" name="first_name" id="first_name" required>
+            <label for="last_name">Last Name:</label>
+            <input type="text" name="last_name" id="last_name" required>
             <label for="email">Email:</label>
             <input type="email" id="email" name="email" required value="{{ email|default('') }}">
 
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-
-            <label for="confirm_password">Confirm Password:</label>
-            <input type="password" id="confirm_password" name="confirm_password" required>
+            <label>Password:</label>
+            <input type="password" name="password" id="password" required>
+            <label>Confirm Password:</label>
+            <input type="password" name="confirm_password" id="confirm_password" required>
+            <div style="margin: 0.5em 0;">
+                <input type="checkbox" id="show_password" onclick="togglePassword()"> Show Password
+            </div>
+            <script>
+            function togglePassword() {
+                var pwd = document.getElementById("password");
+                var cpwd = document.getElementById("confirm_password");
+                pwd.type = pwd.type === "password" ? "text" : "password";
+                cpwd.type = cpwd.type === "password" ? "text" : "password";
+            }
+            </script>
 
             <button type="submit" class="button">Register</button>
         </form>

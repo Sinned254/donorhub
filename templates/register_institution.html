@@ -14,7 +14,9 @@
     <nav>
         <a href="{{ url_for('index') }}">Home</a>
         <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('contact') }}">Contact Us</a>
         <a href="{{ url_for('about') }}">About</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
     </nav>
     <div class="container" style="max-width: 600px; margin: 2rem auto;">
         {% with messages = get_flashed_messages(with_categories=true) %}

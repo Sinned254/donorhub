@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Contact Us - Charity Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .contact-container {
+            max-width: 700px;
+            margin: 2em auto;
+            background: #232946;
+            padding: 2em;
+            border-radius: 8px;
+            color: #fff;
+            box-shadow: 0 0 10px #0003;
+        }
+        .contact-info {
+            margin-bottom: 2em;
+        }
+        .contact-info h2 {
+            margin-top: 0;
+        }
+        .contact-details {
+            margin-bottom: 1.5em;
+        }
+        .contact-details p {
+            margin: 0.3em 0;
+        }
+        .contact-form-section {
+            margin-top: 2em;
+        }
+        label { display: block; margin-top: 1em; }
+        input, textarea {
+            width: 100%; padding: 0.5em; border-radius: 4px; border: 1px solid #ccc;
+        }
+        .button {
+            margin-top: 1.5em;
+            background: #ffc300;
+            color: #232946;
+            border: none;
+            border-radius: 5px;
+            padding: 0.5em 1.2em;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+        .button:hover { background: #ffe066; }
+        .flashes {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 1em;
+        }
+        .flashes li {
+            background: #ff6f61;
+            color: #fff;
+            margin-bottom: 0.5em;
+            padding: 0.7em 1em;
+            border-radius: 5px;
+        }
+        .flashes li.success {
+            background: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Charity Connect</h1>
+        <p>Connecting donors and institutions for a better tomorrow.</p>
+    </header>
+    <nav>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('about') }}">About</a>
+        <a href="{{ url_for('contact') }}">Contact Us</a>
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('my_institution') }}">My Institution</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" style="color: #232946; background: #ffc300; padding: 0.4em 1em; border-radius: 5px; text-decoration: none; font-size: 1em; opacity: 0.85;">Login</a>
+        {% endif %}
+    </nav>
+    <div class="contact-container">
+        <div class="contact-info">
+            <h2>Contact Us</h2>
+            <div class="contact-details">
+                <p><strong>Email:</strong> <a href="mailto:info@charityconnect.org" style="color:#ffc300;">info@charityconnect.org</a></p>
+                <p><strong>Phone:</strong> +254 700 123456</p>
+                <p><strong>Address:</strong> 123 Charity Lane, Nairobi, Kenya</p>
+            </div>
+            <p>
+                For any questions, partnership opportunities, or support, please reach out to us using the contact details above or the form below.
+                We aim to respond to all inquiries within 2 business days.
+            </p>
+        </div>
+        <div class="contact-form-section">
+            <h3>Send Us a Message</h3>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flashes">
+                        {% for category, message in messages %}
+                            <li class="{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+            <form method="post">
+                <label for="name">Your Name:</label>
+                <input type="text" name="name" id="name" required value="{{ name|default('') }}">
+                <label for="email">Your Email:</label>
+                <input type="email" name="email" id="email" required value="{{ email|default('') }}">
+                <label for="message">Message:</label>
+                <textarea name="message" id="message" rows="5" required>{{ message|default('') }}</textarea>
+                <button type="submit" class="button">Send Message</button>
+            </form>
+        </div>
+    </div>
+    <footer>
+        &copy; 2023 Charity Connect
+    </footer>
+</body>
+</html>

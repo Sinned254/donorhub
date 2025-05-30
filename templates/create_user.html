@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create User - Admin</title>
+    <style>
+        .user-form {
+            max-width: 400px;
+            margin: 2em auto;
+            background: #232946;
+            padding: 2em;
+            border-radius: 8px;
+            color: #fff;
+            box-shadow: 0 0 10px #0004;
+        }
+        label { display: block; margin-top: 1em; }
+        input, select {
+            width: 100%; padding: 0.5em; border-radius: 4px; border: 1px solid #ccc;
+        }
+        .button {
+            margin-top: 1.5em;
+            background: #ffc300;
+            color: #232946;
+            border: none;
+            border-radius: 5px;
+            padding: 0.5em 1.2em;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+        .button:hover { background: #ffe066; }
+        a { color: #ffc300; display: block; margin-top: 1em; text-align: center; }
+        .flashes {
+            list-style-type: none;
+            padding: 0;
+        }
+        .flashes li {
+            padding: 0.5em;
+            margin: 0.5em 0;
+            border-radius: 4px;
+        }
+        .flashes .error { background: #ffdddd; color: #d8000c; }
+        .flashes .success { background: #ddffdd; color: #4caf50; }
+        .flashes .warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="user-form">
+        <h2>Create New User</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <label>First Name:</label>
+            <input type="text" name="first_name" required>
+            <label>Last Name:</label>
+            <input type="text" name="last_name" required>
+            <label>Email:</label>
+            <input type="email" name="email" required>
+            <label>Password:</label>
+            <input type="password" name="password" required>
+            <label>Role:</label>
+            <select name="role">
+                <option value="institution_admin">Institution Admin</option>
+                <option value="admin">Admin</option>
+            </select>
+            <button type="submit" class="button">Create User</button>
+        </form>
+        <a href="{{ url_for('admin') }}">&larr; Back to Admin Portal</a>
+    </div>
+</body>
+</html>

@@ -14,6 +14,7 @@
     <nav>
         <a href="{{ url_for('index') }}">Home</a>
         <a href="{{ url_for('institutions') }}">Institutions</a>
+        <a href="{{ url_for('contact') }}">Contact Us</a>
         <a href="{{ url_for('about') }}">About</a>
     </nav>
     <div class="form-container">
@@ -38,6 +39,9 @@
         </form>
         <p style="text-align:center; margin-top:1.5em;">
             Don't have an account? <a href="{{ url_for('register') }}" style="color: var(--primary); font-weight: 500;">Register here</a>.
+        </p>
+        <p style="text-align:center; margin-top:1em;">
+            <a href="{{ url_for('forgot_password') }}">Forgot password?</a>
         </p>
     </div>
     <footer>

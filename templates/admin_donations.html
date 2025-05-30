@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Donations | Charity Connect</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            background: #f4f6fb;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #232946;
+            margin: 0;
+            padding: 0;
+        }
+        .admin-container {
+            max-width: 900px;
+            margin: 2em auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 16px #0002;
+            padding: 2em 2.5em;
+        }
+        h2 {
+            margin-top: 0;
+            color: #232946;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2em;
+            background: #f9fafc;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 0.7em 1em;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: left;
+        }
+        th {
+            background: #232946;
+            color: #fff;
+            font-weight: 600;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .button {
+            padding: 0.3em 0.8em;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            margin-right: 0.3em;
+        }
+        .status-received { color: #28a745; font-weight: bold; }
+        .status-pending { color: #ffc300; font-weight: bold; }
+        a.back-link {
+            color: #ffc300;
+            display: block;
+            margin: 2em auto 0 auto;
+            text-align: center;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        form { display: inline; }
+        @media (max-width: 700px) {
+            .admin-container { padding: 1em; }
+            table, th, td { font-size: 0.95em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <h2>All Donations</h2>
+        <form method="get" action="{{ url_for('admin_donations') }}" style="margin-bottom: 1em; display: flex; gap: 0.5em;">
+            <input type="text" name="donation_search" placeholder="Search by donor, institution, or email" value="{{ request.args.get('donation_search', '') }}" style="flex:1; padding:0.4em;">
+            <button type="submit" class="button" style="background:#ffc300; color:#232946;">Search</button>
+        </form>
+        <a href="{{ url_for('export_donations_csv', donation_search=request.args.get('donation_search', '')) }}" class="button" style="background:#232946; color:#fff; margin-bottom:1em;">Export to CSV</a>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Donor</th>
+                    <th>Email</th>
+                    <th>Institution</th>
+                    <th>Type</th>
+                    <th>Amount/Item</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in donations %}
+                <tr>
+                    <td>{{ d.donation_date.strftime('%Y-%m-%d') if d.donation_date else '' }}</td>
+                    <td>{{ d.donor_name }}</td>
+                    <td>{{ d.donor_email }}</td>
+                    <td>{{ d.institution_name }}</td>
+                    <td>{{ d.donation_type }}</td>
+                    <td>
+                        {% if d.donation_type == 'cash' %}
+                            ${{ d.donation_amount }}
+                        {% elif d.donation_type == 'item' %}
+                            {{ d.item_quantity }} x {{ d.item_name }}
+                        {% elif d.donation_type == 'service' %}
+                            {{ d.service_description }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if d.received %}
+                            <span class="status-received">Received</span>
+                        {% else %}
+                            <span class="status-pending">Pending</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{{ url_for('admin') }}" class="back-link">&larr; Back to Admin Portal</a>
+    </div>
+</body>
+</html>

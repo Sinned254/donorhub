@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, get_flashed_messages
+from flask import Flask, render_template, request, redirect, url_for, flash, get_flashed_messages, session
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from werkzeug.utils import secure_filename
 import psycopg2
@@ -6,6 +6,11 @@ import os
 import re
 import psycopg2.extras
 import bcrypt
+from flask_mail import Mail, Message
+from datetime import datetime, timedelta
+from itsdangerous import URLSafeTimedSerializer
+from math import ceil
+
 
 def create_app():
     app = Flask(__name__)
@@ -13,6 +18,12 @@ def create_app():
 app = Flask(__name__)
 
 app.secret_key = 'mwambui'  # Add a secret key for sessions
+serializer = URLSafeTimedSerializer(app.secret_key)
+
+app.permanent_session_lifetime = timedelta(minutes=5) 
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
 
 # Database Configuration
 DATABASE_URL = "postgresql://postgres:r2d2c3po@localhost:5432/dhub"
@@ -25,6 +36,24 @@ def get_db_connection():
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'charityhubconnect@gmail.com'         # <-- your Gmail address
+app.config['MAIL_PASSWORD'] = 'qrdizbrhxsybqjvw'            # <-- your Gmail App Password
+app.config['MAIL_DEFAULT_SENDER'] = 'charityhubconnect@gmail.com'   # <-- your Gmail address
+
+mail = Mail(app)
+
+def is_strong_password(password):
+    if (len(password) < 8 or
+        not re.search(r'[A-Z]', password) or
+        not re.search(r'[a-z]', password) or
+        not re.search(r'\d', password) or
+        not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
+        return False
+    return True
 
 @app.template_filter('strftime')
 def _jinja2_filter_datetime(date, fmt=None):
@@ -71,14 +100,10 @@ def load_user(user_id):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        # If user is already logged in, redirect appropriately
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT institution_id FROM users WHERE id = %s;", (current_user.id,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
-        if result and result[0]:
+    # If user is already logged in, redirect based on role
+        if hasattr(current_user, 'role') and current_user.role == 'admin':
+            return redirect(url_for('admin'))
+        elif hasattr(current_user, 'institution_id') and current_user.institution_id:
             return redirect(url_for('my_institution'))
         else:
             return redirect(url_for('register_institution'))
@@ -94,7 +119,7 @@ def login():
             cur = conn.cursor()
 
             # Retrieve user from the database
-            cur.execute("SELECT id, email, password, role, institution_id FROM users WHERE email = %s;", (email,))
+            cur.execute("SELECT id, email, password, role, institution_id, confirmed FROM users WHERE email = %s;", (email,))
             user_data = cur.fetchone()
 
             if user_data:
@@ -103,6 +128,11 @@ def login():
                 hashed_password = user_data[2]
                 user_role = user_data[3]
                 institution_id = user_data[4]
+                is_confirmed = user_data[5]
+
+                if not is_confirmed:
+                    flash('Your account is not confirmed. Please check your email for the confirmation link.', 'warning')
+                    return render_template('login.html', email=email)
 
                 # Verify the password
                 if bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8')):
@@ -111,9 +141,13 @@ def login():
                     flash('Logged in successfully!', 'success')
 
                     # Redirect based on institution status
+                    # Redirect based on user role and institution status
+                    # Redirect based on user role and institution status
                     next_page = request.args.get('next')
                     if next_page:
                         return redirect(next_page)
+                    elif user_role == 'admin':
+                        return redirect(url_for('admin'))
                     elif institution_id:
                         return redirect(url_for('my_institution'))
                     else:
@@ -154,29 +188,475 @@ def index():
 def about():
     return render_template('about.html')
 
+@app.route('/admin')
+@login_required
+def admin():
+    user_search = request.args.get('user_search', '').strip()
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied. Admins only.", "danger")
+        return redirect(url_for('index'))
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    # Pending institutions with submitter's email
+    cur.execute("""
+        SELECT i.*, u.email AS submitted_by_email
+        FROM institutions i
+        LEFT JOIN users u ON i.user_id = u.id
+        WHERE i.approved = FALSE
+        ORDER BY i.created_at DESC;
+    """)
+    pending_institutions = cur.fetchall()
+
+    # User search
+    if user_search:
+        cur.execute("""
+            SELECT u.id, u.email, u.role, i.name AS institution_name
+            FROM users u
+            LEFT JOIN institutions i ON i.user_id = u.id
+            WHERE u.first_name ILIKE %s OR u.last_name ILIKE %s OR u.email ILIKE %s
+            ORDER BY u.role, u.email;
+        """, (f'%{user_search}%', f'%{user_search}%', f'%{user_search}%'))
+    else:
+        cur.execute("""
+            SELECT u.id, u.email, u.role, i.name AS institution_name
+            FROM users u
+            LEFT JOIN institutions i ON i.user_id = u.id
+            ORDER BY u.role, u.email;
+        """)
+    users = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template(
+        'admin.html',
+        pending_institutions=pending_institutions,
+        users=users
+    )
+
+@app.route('/admin/approve/<int:institution_id>', methods=['POST'])
+@login_required
+def approve_institution(institution_id):
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied. Admins only.", "danger")
+        return redirect(url_for('admin'))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE institutions
+            SET approved = TRUE, approved_by = %s, approved_at = NOW()
+            WHERE id = %s
+        """, (current_user.id, institution_id))
+        conn.commit()
+        flash("Institution approved.", "success")
+        # After approving institution and before redirect
+        cur.execute("SELECT email FROM institutions WHERE id = %s;", (institution_id,))
+        institution_email = cur.fetchone()
+        if institution_email:
+            msg = Message(
+                "Charity Connect: Institution Approved",
+                recipients=[institution_email[0]]
+            )
+            msg.body = (
+                "Congratulations! Your institution has been approved and is now live on Charity Connect.\n\n"
+                "You can now receive donations from our community.\n\n"
+                "Best regards,\nCharity Connect Team"
+            )
+            mail.send(msg)
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error approving institution: {e}")
+        flash("Error approving institution.", "danger")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for('admin'))
+
+@app.route('/admin/create_user', methods=['GET', 'POST'])
+@login_required
+def create_user():
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied. Admins only.", "danger")
+        return redirect(url_for('admin'))
+
+    if request.method == 'POST':
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        role = request.form.get('role', 'institution_admin')
+
+        if not first_name or not last_name or not email or not password:
+            flash("All fields are required.", "warning")
+            return render_template('create_user.html')
+
+        EMAIL_REGEX = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+        if not re.match(EMAIL_REGEX, email):
+            flash('Please enter a valid email address.', 'warning')
+            return render_template('create_user.html')
+
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "INSERT INTO users (first_name, last_name, email, password, role) VALUES (%s, %s, %s, %s, %s);",
+                (first_name, last_name, email, hashed_password, role)
+            )
+            conn.commit()
+            flash("User created successfully!", "success")
+            return redirect(url_for('admin'))
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            flash("Error creating user: " + str(e), "danger")
+            return render_template('create_user.html')
+        finally:
+            cur.close()
+            conn.close()
+    return render_template('create_user.html')
+
+@app.route('/admin/reset_password/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def reset_password(user_id):
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied. Admins only.", "danger")
+        return redirect(url_for('admin'))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, email FROM users WHERE id = %s;", (user_id,))
+    user = cur.fetchone()
+    if not user:
+        flash("User not found.", "danger")
+        cur.close()
+        conn.close()
+        return redirect(url_for('admin'))
+
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        if not new_password or not confirm_password:
+            flash("Both password fields are required.", "warning")
+            return render_template('reset_password.html', user=user)
+
+        if not is_strong_password(new_password):
+            flash('Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a digit, and a special character.', 'warning')
+            return render_template('reset_password.html', user=user)
+
+        if new_password != confirm_password:
+            flash("Passwords do not match.", "warning")
+            return render_template('reset_password.html', user=user)
+
+        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        cur.execute("UPDATE users SET password = %s WHERE id = %s;", (hashed_password, user_id))
+        conn.commit()
+        flash("Password reset successfully!", "success")
+        cur.close()
+        conn.close()
+        return redirect(url_for('admin'))
+
+    cur.close()
+    conn.close()
+    return render_template('reset_password.html', user=user)
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied. Admins only.", "danger")
+        return redirect(url_for('admin'))
+    if user_id == current_user.id:
+        flash("You cannot delete your own account.", "warning")
+        return redirect(url_for('admin'))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM users WHERE id = %s;", (user_id,))
+        conn.commit()
+        flash("User deleted successfully.", "success")
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        flash("Error deleting user: " + str(e), "danger")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for('admin'))
+
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        old_password = request.form.get('old_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        if not old_password or not new_password or not confirm_password:
+            flash("All fields are required.", "warning")
+            return render_template('change_password.html')
+        
+        if not is_strong_password(new_password):
+            flash('Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a digit, and a special character.', 'warning')
+            return render_template('change_password.html')
+
+        # Fetch current hashed password
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT password FROM users WHERE id = %s;", (current_user.id,))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not user or not bcrypt.checkpw(old_password.encode('utf-8'), user[0].encode('utf-8')):
+            flash("Old password is incorrect.", "danger")
+            return render_template('change_password.html')
+
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "warning")
+            return render_template('change_password.html')
+
+        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("UPDATE users SET password = %s WHERE id = %s;", (hashed_password, current_user.id))
+            conn.commit()
+            flash("Password changed successfully!", "success")
+            return redirect(url_for('admin'))
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            flash("Error changing password: " + str(e), "danger")
+        finally:
+            cur.close()
+            conn.close()
+    return render_template('change_password.html')
+
+@app.route('/admin/view_institution/<int:institution_id>')
+@login_required
+def view_institution(institution_id):
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied. Admins only.", "danger")
+        return redirect(url_for('admin'))
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute("""
+        SELECT i.*, u.email AS submitted_by_email
+        FROM institutions i
+        LEFT JOIN users u ON i.user_id = u.id
+        WHERE i.id = %s;
+    """, (institution_id,))
+    institution = cur.fetchone()
+
+    # Fetch needed items for this institution
+    cur.execute("""
+        SELECT i.name FROM items i
+        JOIN institution_needed_items ini ON i.id = ini.item_id
+        WHERE ini.institution_id = %s;
+    """, (institution_id,))
+    needed_items = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template('view_institution.html', institution=institution, needed_items=needed_items)
+
+@app.route('/admin/institutions')
+@login_required
+def admin_institutions():
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied. Admins only.", "danger")
+        return redirect(url_for('admin'))
+    institution_search = request.args.get('institution_search', '').strip()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    if institution_search:
+        cur.execute("""
+            SELECT * FROM institutions
+            WHERE name ILIKE %s OR email ILIKE %s
+            ORDER BY approved DESC, name;
+        """, (f'%{institution_search}%', f'%{institution_search}%'))
+    else:
+        cur.execute("SELECT * FROM institutions ORDER BY approved DESC, name;")
+    institutions = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('admin_institutions.html', institutions=institutions)
+
+@app.route('/admin/suspend_institution/<int:institution_id>', methods=['POST'])
+@login_required
+def suspend_institution(institution_id):
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied.", "danger")
+        return redirect(url_for('admin_institutions'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE institutions SET suspended = TRUE WHERE id = %s;", (institution_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash("Institution suspended.", "success")
+    return redirect(url_for('admin_institutions'))
+
+@app.route('/admin/activate_institution/<int:institution_id>', methods=['POST'])
+@login_required
+def activate_institution(institution_id):
+    institution_search = request.args.get('institution_search', '').strip()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    if institution_search:
+        cur.execute("""
+            SELECT * FROM institutions
+            WHERE name ILIKE %s OR email ILIKE %s
+            ORDER BY approved DESC, name;
+        """, (f'%{institution_search}%', f'%{institution_search}%'))
+    else:
+        cur.execute("SELECT * FROM institutions ORDER BY approved DESC, name;")
+    institutions = cur.fetchall()
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied.", "danger")
+        return redirect(url_for('admin_institutions'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE institutions SET suspended = FALSE WHERE id = %s;", (institution_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash("Institution activated.", "success")
+    return redirect(url_for('admin_institutions'))
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        if not email:
+            flash("Please enter your email address.", "warning")
+            return render_template('forgot_password.html')
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE email = %s;", (email,))
+        user = cur.fetchone()
+        if user:
+            token = serializer.dumps(email, salt='password-reset')
+            reset_url = url_for('reset_password_token', token=token, _external=True)
+            msg = Message(
+                "Charity Connect: Password Reset Request",
+                recipients=[email]
+            )
+            msg.body = (
+                f"To reset your password, click the link below:\n\n{reset_url}\n\n"
+                "If you did not request a password reset, please ignore this email."
+            )
+            mail.send(msg)
+        flash("If that email is registered, a password reset link has been sent.", "info")
+        cur.close()
+        conn.close()
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password_token(token):
+    try:
+        email = serializer.loads(token, salt='password-reset', max_age=3600)
+    except Exception:
+        flash('The reset link is invalid or has expired.', 'danger')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        if not new_password or not confirm_password:
+            flash("Both password fields are required.", "warning")
+            return render_template('reset_password_token.html', token=token)
+        if not is_strong_password(new_password):
+            flash('Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a digit, and a special character.', 'warning')
+            return render_template('reset_password_token.html', token=token)
+        if new_password != confirm_password:
+            flash("Passwords do not match.", "warning")
+            return render_template('reset_password_token.html', token=token)
+        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET password = %s WHERE email = %s;", (hashed_password, email))
+        conn.commit()
+        cur.close()
+        conn.close()
+        flash("Your password has been reset. You can now log in.", "success")
+        return redirect(url_for('login'))
+    return render_template('reset_password_token.html', token=token)
+
 @app.route('/institutions', methods=['GET'])
 def institutions():
     conn = None
     cur = None
     institutions_list = []
     try:
+        # Pagination setup
+        page = int(request.args.get('page', 1))
+        per_page = 5
+
+        # Filters
+        search = request.args.get('search', '').strip()
+        location = request.args.get('location', '').strip()
+        inst_type = request.args.get('type', '').strip()
+
         conn = get_db_connection()
         cur = conn.cursor()
 
-        # Fetch all institutions
-        cur.execute("SELECT id, name, location, email, phone, website, type, photo_filename FROM institutions;")
-        institutions_data = cur.fetchall()  # Fetch institution data
+        # For filter dropdowns
+        cur.execute("SELECT DISTINCT location FROM institutions WHERE location IS NOT NULL AND location <> '' ORDER BY location;")
+        locations = [row[0] for row in cur.fetchall()]
+        cur.execute("SELECT DISTINCT type FROM institutions WHERE type IS NOT NULL AND type <> '' ORDER BY type;")
+        types = [row[0] for row in cur.fetchall()]
 
-        # For each institution, fetch their needed items from institution_needed_items
+        # Build filter query
+        filters = ["approved = TRUE", "(suspended IS NULL OR suspended = FALSE)"]
+        params = []
+        if search:
+            filters.append("(name ILIKE %s OR email ILIKE %s)")
+            params.extend([f"%{search}%", f"%{search}%"])
+        if location:
+            filters.append("location = %s")
+            params.append(location)
+        if inst_type:
+            filters.append("type = %s")
+            params.append(inst_type)
+        where_clause = " AND ".join(filters)
+
+        # Count total
+        cur.execute(f"SELECT COUNT(*) FROM institutions WHERE {where_clause}", tuple(params))
+        total = cur.fetchone()[0]
+        total_pages = ceil(total / per_page)
+        offset = (page - 1) * per_page
+
+        # Fetch paginated institutions
+        cur.execute(f"""
+            SELECT * FROM institutions
+            WHERE {where_clause}
+            ORDER BY name
+            LIMIT %s OFFSET %s
+        """, (*params, per_page, offset))
+        institutions_data = cur.fetchall()
+
+        # For each institution, fetch their needed items
         for institution_row in institutions_data:
-            institution_id = institution_row[0]  # Get the institution id
+            institution_id = institution_row[0]
             cur.execute("""
                 SELECT i.name
                 FROM items i
                 JOIN institution_needed_items ini ON i.id = ini.item_id
                 WHERE ini.institution_id = %s;
             """, (institution_id,))
-            needed_items = [row[0] for row in cur.fetchall()]  # Fetch all items for this institution
+            needed_items = [row[0] for row in cur.fetchall()]
 
             institution_dict = {
                 'id': institution_row[0],
@@ -194,13 +674,24 @@ def institutions():
     except (psycopg2.Error, Exception) as e:
         print(f"Error fetching institutions and items: {e}")
         institutions_list = []
+        total_pages = 1
+        page = 1
+        locations = []
+        types = []
     finally:
         if cur:
             cur.close()
         if conn:
             conn.close()
 
-    return render_template('institutions.html', institutions=institutions_list)
+    return render_template(
+        'institutions.html',
+        institutions=institutions_list,
+        page=page,
+        total_pages=total_pages,
+        locations=locations,
+        types=types
+    )
 
 @app.route('/donate/<int:institution_id>', methods=['GET', 'POST'])
 def donate(institution_id):
@@ -303,8 +794,34 @@ def donate(institution_id):
             )
 
             conn.commit()
+            # Notify institution
+            cur.execute("SELECT email, name FROM institutions WHERE id = %s;", (institution_id,))
+            inst = cur.fetchone()
+            if inst:
+                msg = Message(
+                    "Charity Connect: New Donation Received",
+                    recipients=[inst['email']]
+                )
+                msg.body = (
+                    f"Dear {inst['name']},\n\n"
+                    f"You have received a new donation from {donor_name} ({donor_email}).\n"
+                    "Please log in to your dashboard to view details and contact the donor to arrange delivery.\n\n"
+                    "Best regards,\nCharity Connect Team"
+                )
+                mail.send(msg)
 
-            flash("Thank you for your donation!", "success")
+                msg = Message(
+                "Charity Connect: Thank You for Your Donation",
+                recipients=[donor_email]
+                )
+                msg.body = (
+                    f"Dear {donor_name},\n\n"
+                    "Thank you for your generous donation! The institution will contact you soon to arrange details.\n\n"
+                    "Best regards,\nCharity Connect Team"
+                )
+                mail.send(msg)
+
+            flash("Thank you for your donation! You will receive email an email shortly with further details!", "success")
             return redirect(url_for('institutions'))
 
     except (psycopg2.Error, Exception) as e:
@@ -318,6 +835,27 @@ def donate(institution_id):
             cur.close()
         if conn:
             conn.close()
+
+@app.route('/mark_donation_received/<int:donation_id>', methods=['POST'])
+@login_required
+def mark_donation_received(donation_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Optionally, check if current_user is institution admin for this donation
+        cur.execute("""
+            UPDATE donations SET received = TRUE WHERE id = %s;
+        """, (donation_id,))
+        conn.commit()
+        flash("Donation marked as received.", "success")
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        flash("Error marking donation as received.", "danger")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for('my_institution'))
 
 @app.route('/edit_institution/<int:institution_id>', methods=['GET', 'POST'])
 def edit_institution(institution_id):
@@ -574,11 +1112,11 @@ def my_institution():
             WHERE ini.institution_id = %s;
         """, (institution['id'],))
         needed_items = [row[0] for row in cur.fetchall()]
-        print("DEBUG: needed_items =", needed_items)
 
         # Get donations for this institution
         cur.execute("""
-            SELECT d.donor_name, d.donor_email, d.donation_type, d.donation_amount, d.item_quantity, i.name AS item_name, d.item_condition, d.service_description, d.donation_date
+            SELECT d.id, d.donor_name, d.donor_email, d.donation_type, d.donation_amount, d.item_quantity, 
+                   i.name AS item_name, d.item_condition, d.service_description, d.donation_date, d.received
             FROM donations d
             LEFT JOIN items i ON d.item_id = i.id
             WHERE d.institution_id = %s
@@ -600,18 +1138,30 @@ def my_institution():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
+        first_name = request.form.get('first_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        if not is_strong_password(password):
+            flash('Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a digit, and a special character.', 'warning')
+            return render_template('register.html', first_name=first_name, last_name=last_name, email=email)
 
         # Basic validation
-        if not email or not password or not confirm_password:
+        if not first_name or not last_name or not email or not password or not confirm_password:
             flash('All fields are required.', 'warning')
-            return render_template('register.html', email=email) # Pass email back to pre-fill
+            return render_template('register.html', first_name=first_name, last_name=last_name, email=email)
+        
+        EMAIL_REGEX = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+        
+        # In your register route, after getting the email:
+        if not re.match(EMAIL_REGEX, email):
+            flash('Please enter a valid email address.', 'warning')
+            return render_template('register.html', first_name=first_name, last_name=last_name, email=email)
 
         if password != confirm_password:
             flash('Passwords do not match.', 'warning')
-            return render_template('register.html', email=email)
+            return render_template('register.html', first_name=first_name, last_name=last_name, email=email)
 
         conn = None
         cur = None
@@ -624,17 +1174,35 @@ def register():
             existing_user = cur.fetchone()
             if existing_user:
                 flash('Email address already registered.', 'warning')
-                return render_template('register.html', email=email)
+                return render_template('register.html', first_name=first_name, last_name=last_name, email=email)
 
             # Hash the password
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
             # Insert new user into the database
             cur.execute(
-                "INSERT INTO users (email, password) VALUES (%s, %s);",
-                (email, hashed_password.decode('utf-8')) # Store hashed password as string
+                "INSERT INTO users (first_name, last_name, email, password) VALUES (%s, %s, %s, %s);",
+                (first_name, last_name, email, hashed_password.decode('utf-8'))
             )
             conn.commit()
+            cur.execute("SELECT id FROM users WHERE email = %s;", (email,))
+            user_id = cur.fetchone()[0]
+            token = serializer.dumps(email, salt='email-confirm')
+            confirm_url = url_for('confirm_email', token=token, _external=True)
+            msg = Message(
+                "Charity Connect: Confirm Your Email",
+                recipients=[email]
+            )
+            msg.body = (
+                f"Hi {first_name},\n\n"
+                f"Thank you for registering! Please confirm your email by clicking the link below:\n\n"
+                f"{confirm_url}\n\n"
+                "If you did not register, please ignore this email.\n\n"
+                "Best regards,\nCharity Connect Team"
+            )
+            mail.send(msg)
+            flash('Registration successful! Please check your email to confirm your address.', 'success')
+            return redirect(url_for('login'))
 
             flash('Registration successful! Please log in.', 'success')
             return redirect(url_for('login'))
@@ -644,7 +1212,7 @@ def register():
                 conn.rollback()
             print(f"An error occurred during registration: {e}")
             flash('An error occurred during registration. Please try again.', 'danger')
-            return render_template('register.html', email=email) # Pass email back
+            return render_template('register.html', first_name=first_name, last_name=last_name, email=email)
 
         finally:
             if cur:
@@ -654,6 +1222,28 @@ def register():
 
     # GET request: Display registration form
     return render_template('register.html')
+
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        email = serializer.loads(token, salt='email-confirm', max_age=3600)  # 1 hour expiry
+    except Exception:
+        flash('The confirmation link is invalid or has expired.', 'danger')
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT confirmed FROM users WHERE email = %s;", (email,))
+    user = cur.fetchone()
+    if user and not user[0]:
+        cur.execute("UPDATE users SET confirmed = TRUE WHERE email = %s;", (email,))
+        conn.commit()
+        flash('Your email has been confirmed! You can now log in.', 'success')
+    else:
+        flash('Account already confirmed or does not exist.', 'info')
+    cur.close()
+    conn.close()
+    return redirect(url_for('login'))
 
 @app.route('/register_institution', methods=['GET', 'POST'])
 @login_required
@@ -729,6 +1319,18 @@ def register_institution():
             cur.execute("UPDATE users SET institution_id = %s WHERE id = %s;", (institution_id, current_user.id))
 
             conn.commit()
+            msg = Message(
+                "Charity Connect: Institution Registration Received",
+                recipients=[email]
+            )
+            msg.body = (
+                f"Dear {name},\n\n"
+                "Thank you for registering your institution with Charity Connect. "
+                "Your submission has been received and is pending approval. "
+                "We will notify you once your institution is approved.\n\n"
+                "Best regards,\nCharity Connect Team"
+            )
+            mail.send(msg)
             flash("Institution registered successfully!", "success")
             return redirect(url_for('my_institution'))
 
@@ -744,6 +1346,149 @@ def register_institution():
             if conn:
                 conn.close()
     return render_template('register_institution.html')
+
+@app.route('/admin/donations')
+@login_required
+def admin_donations():
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied. Admins only.", "danger")
+        return redirect(url_for('admin'))
+
+    donation_search = request.args.get('donation_search', '').strip()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    if donation_search:
+        search_term = f"%{donation_search}%"
+        cur.execute("""
+            SELECT d.id, d.donor_name, d.donor_email, d.donation_type, d.donation_amount, d.item_quantity,
+                   i.name AS item_name, d.item_condition, d.service_description, d.donation_date, d.received,
+                   inst.name AS institution_name
+            FROM donations d
+            LEFT JOIN items i ON d.item_id = i.id
+            LEFT JOIN institutions inst ON d.institution_id = inst.id
+            WHERE d.donor_name ILIKE %s
+               OR d.donor_email ILIKE %s
+               OR inst.name ILIKE %s
+            ORDER BY d.donation_date DESC;
+        """, (search_term, search_term, search_term))
+    else:
+        cur.execute("""
+            SELECT d.id, d.donor_name, d.donor_email, d.donation_type, d.donation_amount, d.item_quantity,
+                   i.name AS item_name, d.item_condition, d.service_description, d.donation_date, d.received,
+                   inst.name AS institution_name
+            FROM donations d
+            LEFT JOIN items i ON d.item_id = i.id
+            LEFT JOIN institutions inst ON d.institution_id = inst.id
+            ORDER BY d.donation_date DESC;
+        """)
+    donations = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('admin_donations.html', donations=donations)
+
+import csv
+from io import StringIO
+from flask import Response
+
+@app.route('/admin/donations/export')
+@login_required
+def export_donations_csv():
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("Access denied. Admins only.", "danger")
+        return redirect(url_for('admin'))
+
+    donation_search = request.args.get('donation_search', '').strip()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    if donation_search:
+        search_term = f"%{donation_search}%"
+        cur.execute("""
+            SELECT d.donation_date, d.donor_name, d.donor_email, inst.name AS institution_name,
+                   d.donation_type, d.donation_amount, d.item_quantity, i.name AS item_name,
+                   d.item_condition, d.service_description, d.received
+            FROM donations d
+            LEFT JOIN items i ON d.item_id = i.id
+            LEFT JOIN institutions inst ON d.institution_id = inst.id
+            WHERE d.donor_name ILIKE %s
+               OR d.donor_email ILIKE %s
+               OR inst.name ILIKE %s
+            ORDER BY d.donation_date DESC;
+        """, (search_term, search_term, search_term))
+    else:
+        cur.execute("""
+            SELECT d.donation_date, d.donor_name, d.donor_email, inst.name AS institution_name,
+                   d.donation_type, d.donation_amount, d.item_quantity, i.name AS item_name,
+                   d.item_condition, d.service_description, d.received
+            FROM donations d
+            LEFT JOIN items i ON d.item_id = i.id
+            LEFT JOIN institutions inst ON d.institution_id = inst.id
+            ORDER BY d.donation_date DESC;
+        """)
+    donations = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    # Prepare CSV
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow([
+        "Date", "Donor", "Email", "Institution", "Type", "Amount", "Quantity", "Item",
+        "Condition", "Service Description", "Received"
+    ])
+    for d in donations:
+        cw.writerow([
+            d['donation_date'].strftime('%Y-%m-%d') if d['donation_date'] else '',
+            d['donor_name'],
+            d['donor_email'],
+            d['institution_name'],
+            d['donation_type'],
+            d['donation_amount'],
+            d['item_quantity'],
+            d['item_name'],
+            d['item_condition'],
+            d['service_description'],
+            "Yes" if d['received'] else "No"
+        ])
+    output = si.getvalue()
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=donations.csv"}
+    )
+
+from flask_mail import Message
+
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        message = request.form.get('message', '').strip()
+
+        if not name or not email or not message:
+            flash("All fields are required.", "warning")
+            return render_template('contact.html', name=name, email=email, message=message)
+
+        # Send email to admin
+        try:
+            msg = Message(
+                subject=f"Contact Us Message from {name}",
+                sender=app.config.get('MAIL_DEFAULT_SENDER', email),
+                recipients=[app.config.get('MAIL_USERNAME')],
+                reply_to=email,
+                body=f"Name: {name}\nEmail: {email}\n\nMessage:\n{message}"
+            )
+            mail.send(msg)
+            flash("Your message has been sent. Thank you!", "success")
+            return redirect(url_for('contact'))
+        except Exception as e:
+            flash("Failed to send message. Please try again later.", "danger")
+            print(e)
+            return render_template('contact.html', name=name, email=email, message=message)
+
+    return render_template('contact.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
